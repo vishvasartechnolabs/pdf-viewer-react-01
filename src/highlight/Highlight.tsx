@@ -35,8 +35,6 @@ const HighlightExample: React.FC<HighlightExampleProps> = ({ fileUrl }) => {
 
     const handleDocumentLoad = (e: DocumentLoadEvent) => {
         setCurrentDoc(e.doc);
-        console.log("Document loaded:", e.doc);
-
         if (currentDoc && currentDoc !== e.doc) {
             // User opens new document
             setNotes([]);
@@ -121,24 +119,28 @@ const HighlightExample: React.FC<HighlightExampleProps> = ({ fileUrl }) => {
 
     const jumpToNote = (note: Note) => {
         activateTab(3);
-        if (notesContainerRef.current) {
-            const element = noteEles.get(note.id);
-            if (element) {
-                notesContainerRef.current.scrollTop = element.offsetTop;
-            }
+        if (noteEles.has(note.id)) {
+            noteEles.get(note.id).scrollIntoView({ behavior: 'smooth', inline: 'nearest' });
         }
-    };
+       
+        // const noteElement = noteEles.get(note.id);
+
+        // if (noteElement) {
+        //     const rect = noteElement.getBoundingClientRect();
+        //     const offsetTop = rect.top + window.scrollY - (desiredOffset || 0); // Adjust `desiredOffset` if needed
+        //     window.scrollTo({ top: offsetTop, behavior: 'smooth' });
+        // }
+ };
 
     const renderHighlights = (props: RenderHighlightsProps) => (
         <div>
             {notes.map((note) => (
-                <React.Fragment  key={note.id}>
+                <React.Fragment key={note.id}>
                     {note.highlightAreas
                         .filter((area) => area.pageIndex === props.pageIndex)
                         .map((area, idx) => (
                             <div
                                 key={idx}
-                                className='chodu'
                                 style={Object.assign(
                                     {},
                                     {
@@ -160,7 +162,6 @@ const HighlightExample: React.FC<HighlightExampleProps> = ({ fileUrl }) => {
         renderHighlightContent,
         renderHighlights,
     });
-    console.log("Highlight Plugin Instance:", highlightPluginInstance);
 
     const { jumpToHighlightArea } = highlightPluginInstance;
 
@@ -177,33 +178,22 @@ const HighlightExample: React.FC<HighlightExampleProps> = ({ fileUrl }) => {
                 overflow: 'auto',
                 width: '100%',
             }}
-            className='sidebar'
         >
             {notes.length === 0 && <div style={{ textAlign: 'center' }}>There is no note</div>}
-            
             {notes.map((note) => {
                 return (
                     <div
-                       className='sidebar-item'
                         key={note.id}
                         style={{
                             borderBottom: '1px solid rgba(0, 0, 0, .3)',
                             cursor: 'pointer',
                             padding: '8px',
                         }}
-                        onClick={() => {
-                            const firstArea = note.highlightAreas[0];
-                            jumpToHighlightArea({
-                                ...firstArea,
-                                pageIndex: firstArea.pageIndex,
-                            });
-                        }}
-
+                        onClick={() => jumpToNote(note)}
                         ref={(ref): void => {
                             noteEles.set(note.id, ref as HTMLElement);
                         }}
                     >
-                        
                         <blockquote
                             style={{
                                 borderLeft: '2px solid rgba(0, 0, 0, 0.2)',
@@ -240,7 +230,7 @@ const HighlightExample: React.FC<HighlightExampleProps> = ({ fileUrl }) => {
             }}
         >
             <Viewer
-                fileUrl='/assets/content.pdf'
+                fileUrl={fileUrl}
                 plugins={[highlightPluginInstance, defaultLayoutPluginInstance]}
                 onDocumentLoad={handleDocumentLoad}
             />
