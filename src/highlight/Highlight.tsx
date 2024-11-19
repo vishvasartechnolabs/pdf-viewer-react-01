@@ -119,18 +119,11 @@ const HighlightExample: React.FC<HighlightExampleProps> = ({ fileUrl }) => {
 
     const jumpToNote = (note: Note) => {
         activateTab(3);
-        if (noteEles.has(note.id)) {
-            noteEles.get(note.id).scrollIntoView({ behavior: 'smooth', inline: 'nearest' });
+        const notesContainer = notesContainerRef.current;
+        if (noteEles.has(note.id) && notesContainer) {
+            notesContainer.scrollTop = noteEles.get(note.id).getBoundingClientRect().top;
         }
-       
-        // const noteElement = noteEles.get(note.id);
-
-        // if (noteElement) {
-        //     const rect = noteElement.getBoundingClientRect();
-        //     const offsetTop = rect.top + window.scrollY - (desiredOffset || 0); // Adjust `desiredOffset` if needed
-        //     window.scrollTo({ top: offsetTop, behavior: 'smooth' });
-        // }
- };
+    };
 
     const renderHighlights = (props: RenderHighlightsProps) => (
         <div>
@@ -189,7 +182,7 @@ const HighlightExample: React.FC<HighlightExampleProps> = ({ fileUrl }) => {
                             cursor: 'pointer',
                             padding: '8px',
                         }}
-                        onClick={() => jumpToNote(note)}
+                        onClick={() => jumpToHighlightArea(note.highlightAreas[0])}
                         ref={(ref): void => {
                             noteEles.set(note.id, ref as HTMLElement);
                         }}
@@ -233,6 +226,7 @@ const HighlightExample: React.FC<HighlightExampleProps> = ({ fileUrl }) => {
                 fileUrl={fileUrl}
                 plugins={[highlightPluginInstance, defaultLayoutPluginInstance]}
                 onDocumentLoad={handleDocumentLoad}
+                defaultScale={1}
             />
         </div>
     );
