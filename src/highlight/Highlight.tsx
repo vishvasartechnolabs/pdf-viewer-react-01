@@ -40,7 +40,7 @@ const HighlightExample: React.FC<HighlightExampleProps> = ({ fileUrl }) => {
             setNotes([]);
         }
     };
-
+    
     const renderHighlightTarget = (props: RenderHighlightTargetProps) => (
         <div
             style={{
