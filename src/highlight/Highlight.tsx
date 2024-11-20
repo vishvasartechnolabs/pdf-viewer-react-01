@@ -40,7 +40,7 @@ const HighlightExample: React.FC<HighlightExampleProps> = ({ fileUrl }) => {
             setNotes([]);
         }
     };
-    
+
     const renderHighlightTarget = (props: RenderHighlightTargetProps) => (
         <div
             style={{
@@ -185,36 +185,36 @@ const HighlightExample: React.FC<HighlightExampleProps> = ({ fileUrl }) => {
             }}
         >
             {notes.length === 0 && <div style={{ textAlign: 'center' }}>There is no note</div>}
-            {notes.map((note) => (
-                <div
-                    key={note.id}
-                    style={{
-                        borderBottom: '1px solid rgba(0, 0, 0, .3)',
-                        cursor: 'pointer',
-                        padding: '8px',
-                    }}
-                    onClick={() => jumpToNote(note)}
-                    ref={(ref) => {
-                        if (ref) {
-                            noteEles.set(note.id, ref);
-                        }
-                    }}
-                >
-                    <blockquote
+            {notes.map((note) => {
+                return (
+                    <div
+                        key={note.id}
                         style={{
-                            borderLeft: '2px solid rgba(0, 0, 0, 0.2)',
-                            fontSize: '.75rem',
-                            lineHeight: 1.5,
-                            margin: '0 0 8px 0',
-                            paddingLeft: '8px',
-                            textAlign: 'justify',
+                            borderBottom: '1px solid rgba(0, 0, 0, .3)',
+                            cursor: 'pointer',
+                            padding: '8px',
+                        }}
+                        onClick={() => jumpToNote(note)}
+                        ref={(ref): void => {
+                            noteEles.set(note.id, ref as HTMLElement);
                         }}
                     >
-                        {note.quote}
-                    </blockquote>
-                    {note.content}
-                </div>
-            ))}
+                        <blockquote
+                            style={{
+                                borderLeft: '2px solid rgba(0, 0, 0, 0.2)',
+                                fontSize: '.75rem',
+                                lineHeight: 1.5,
+                                margin: '0 0 8px 0',
+                                paddingLeft: '8px',
+                                textAlign: 'justify',
+                            }}
+                        >
+                            {note.quote}
+                        </blockquote>
+                        {note.content}
+                    </div>
+                );
+            })}
         </div>
     );
 
