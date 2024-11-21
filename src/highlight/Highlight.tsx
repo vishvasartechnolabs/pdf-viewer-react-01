@@ -12,9 +12,10 @@ import {
 
 import '@react-pdf-viewer/core/lib/styles/index.css';
 import '@react-pdf-viewer/default-layout/lib/styles/index.css';
+import axios from 'axios';
 
 interface Note {
-    id: number;
+    id: any;
     content: string;
     highlightAreas: HighlightArea[];
     quote: string;
@@ -29,18 +30,14 @@ const HighlightExample: React.FC<HighlightExampleProps> = ({ fileUrl }) => {
     const [notes, setNotes] = React.useState<Note[]>([]);
     const notesContainerRef = React.useRef<HTMLDivElement | null>(null);
     let noteId = notes.length;
-
     const noteEles: Map<number, HTMLElement> = new Map();
+    
     const [currentDoc, setCurrentDoc] = React.useState<PdfJs.PdfDocument | null>(null);
-
     const handleDocumentLoad = (e: DocumentLoadEvent) => {
-        setCurrentDoc(e.doc);
-        if (currentDoc && currentDoc !== e.doc) {
-            // User opens new document
-            setNotes([]);
-        }
+        // setCurrentDoc(e.doc);
     };
 
+    // Add highlight and note content
     const renderHighlightTarget = (props: RenderHighlightTargetProps) => (
         <div
             style={{
@@ -67,16 +64,29 @@ const HighlightExample: React.FC<HighlightExampleProps> = ({ fileUrl }) => {
     );
 
     const renderHighlightContent = (props: RenderHighlightContentProps) => {
-        const addNote = () => {
-            if (message !== '') {
+        const addNote = async () => {
+            const uniqueId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+            if (message.trim() !== '') {
                 const note: Note = {
-                    id: ++noteId,
+                    id: uniqueId,
                     content: message,
                     highlightAreas: props.highlightAreas,
                     quote: props.selectedText,
                 };
-                setNotes(notes.concat([note]));
-                props.cancel();
+
+                console.log("added  new note format" ,note);
+
+                // Save note to the backend
+                try {
+                    const response = await axios.post('http://api.netbookflix.local/api/highlight-notes', note, {
+                        headers: { 'Content-Type': 'application/json' },
+                    });
+                    setNotes(notes.concat([note]));
+                    props.cancel(); // Cancel the highlight input
+                } catch (error) {
+                    console.error('Error adding note:', error);
+                }
             }
         };
 
@@ -93,24 +103,14 @@ const HighlightExample: React.FC<HighlightExampleProps> = ({ fileUrl }) => {
                     zIndex: 1,
                 }}
             >
-                <div>
-                    <textarea
-                        rows={3}
-                        style={{
-                            border: '1px solid rgba(0, 0, 0, .3)',
-                        }}
-                        onChange={(e) => setMessage(e.target.value)}
-                    ></textarea>
-                </div>
-                <div
-                    style={{
-                        display: 'flex',
-                        marginTop: '8px',
-                    }}
-                >
-                    <div style={{ marginRight: '8px' }}>
-                        <PrimaryButton onClick={addNote}>Add</PrimaryButton>
-                    </div>
+                <textarea
+                    rows={3}
+                    style={{ border: '1px solid rgba(0, 0, 0, .3)' }}
+                    onChange={(e) => setMessage(e.target.value)}
+                    value={message}
+                ></textarea>
+                <div style={{ display: 'flex', marginTop: '8px' }}>
+                    <PrimaryButton onClick={addNote}>Add</PrimaryButton>
                     <Button onClick={props.cancel}>Cancel</Button>
                 </div>
             </div>
@@ -120,9 +120,15 @@ const HighlightExample: React.FC<HighlightExampleProps> = ({ fileUrl }) => {
     const jumpToNote = (note: Note) => {
         // Activate the Notes tab before scrolling
         activateTab(3);
-    
+        console.log("jumpto note" , note);
+        
         // Check if the note element exists and scroll into view
         const noteElement = noteEles.get(note.id);
+
+        console.log("noteElement  note" , noteElement);
+
+
+        noteElement
         if (noteElement) {
             noteElement.scrollIntoView({
                 behavior: 'smooth',
@@ -130,110 +136,146 @@ const HighlightExample: React.FC<HighlightExampleProps> = ({ fileUrl }) => {
             });
         }
     };
+
+
+    
+const renderHighlights = React.useCallback(
+    (props: RenderHighlightsProps) => {
+        return (
+            <div>
+                {notes
+                    .filter((note) =>
+                        note.highlightAreas.some((area) => area.pageIndex === props.pageIndex)
+                    )
+                    .map((note) =>
+                        note.highlightAreas
+                            .filter((area) => area.pageIndex === props.pageIndex)
+                            .map((area, idx) => (
+                                <div
+                                    key={`${note.id}-${idx}`}
+                                    style={{
+                                        background: 'yellow', // Highlight color
+                                        opacity: 0.4, // Transparency level
+                                        ...props.getCssProperties(area, props.rotation), // Positioning
+                                    }}
+                                    onClick={() => jumpToNote(note)} // Handle click to jump
+                                    ref={(ref) => {
+                                        if (ref) {
+                                            noteEles.set(note.id, ref as HTMLElement);
+                                        }
+                                    }}
+                                />
+                            ))
+                    )}
+            </div>
+        );
+    },
+    [notes, noteEles] // Dependencies
+);
     
 
-    const renderHighlights = (props: RenderHighlightsProps) => (
-        <div>
-            {notes.map((note) => (
-                <React.Fragment key={note.id}>
-                    {note.highlightAreas
-                        .filter((area) => area.pageIndex === props.pageIndex)
-                        .map((area, idx) => (
-                            <div
-                                key={idx}
-                                style={Object.assign(
-                                    {},
-                                    {
-                                        background: 'yellow',
-                                        opacity: 0.4,
-                                    },
-                                    props.getCssProperties(area, props.rotation)
-                                )}
-                                onClick={() => jumpToNote(note)}
-                                ref={(ref) => {
-                                    if (ref) {
-                                        noteEles.set(note.id, ref);
-                                    }
-                                }}
-                            />
-                        ))}
-                </React.Fragment>
-            ))}
-        </div>
-    );
-    
     const highlightPluginInstance = highlightPlugin({
         renderHighlightTarget,
         renderHighlightContent,
         renderHighlights,
     });
 
-    const { jumpToHighlightArea } = highlightPluginInstance;
+    const fetchNotes = async () => {
+        try {
+            // Fetch the notes from the API (getting both the first note and the remaining ones)
+            const response = await axios.post('http://api.netbookflix.local/api/highlight-notes-get', { bookId: 45 });
+            const notesArray = response.data.response; // Assuming 'response' contains the notes
+    
+                    // Extract the first note to add it directly to the state
+                const firstNote = notesArray[0];
+                const note: Note = {
+                    id: firstNote.id,  // ID of the note
+                    content: firstNote.content,  // Content of the note
+                    highlightAreas: [JSON.parse(firstNote.highlight_area)],  // Assuming the highlight_area is a JSON string
+                    quote: firstNote.quote  // Quote associated with the note
+                };
+                console.log('added first not format', note)
+                // First add the first note directly to the state
+                setNotes(notes.concat([note]));
+
+            
+            // Now process the remaining notes
+            const processedNotes = notesArray.slice(1).map((note: any) => ({
+                id: note.id,
+                content: note.content,
+                highlightAreas: [JSON.parse(note.highlight_area)],
+                quote: note.quote,
+            }));
+    
+            // Use setNotes to merge the new notes with the existing ones
+            setNotes((prevNotes) => {
+                // Concatenate the new notes (excluding the first note) to the previous ones
+                const updatedNotes = [...prevNotes, ...processedNotes];
+    
+                // Filter out duplicates by ID
+                const uniqueNotes = updatedNotes.filter(
+                    (note, index, self) =>
+                        index === self.findIndex((n) => n.id === note.id)
+                );
+    
+                return uniqueNotes;
+            });
+    
+        } catch (error) {
+            console.error('Error fetching notes:', error);
+        }
+    };
+    
 
     React.useEffect(() => {
-        return () => {
-            noteEles.clear();
-        };
+        fetchNotes(); // Fetch notes on component mount
     }, []);
 
     const sidebarNotes = (
-        <div
-            ref={notesContainerRef}
-            style={{
-                overflow: 'auto',
-                width: '100%',
-            }}
-        >
-            {notes.length === 0 && <div style={{ textAlign: 'center' }}>There is no note</div>}
-            {notes.map((note) => {
-                return (
-                    <div
-                        key={note.id}
-                        style={{
-                            borderBottom: '1px solid rgba(0, 0, 0, .3)',
-                            cursor: 'pointer',
-                            padding: '8px',
-                        }}
-                        onClick={() => jumpToNote(note)}
+        <div style={{ overflow: 'auto', width: '100%' }}>
+            {notes.length === 0 && <div style={{ textAlign: 'center' }}>No notes available for this book</div>}
+            {notes.map((note) => (
+                <div
+                    key={note.id}
+                    style={{ borderBottom: '1px solid rgba(0, 0, 0, .3)', cursor: 'pointer', padding: '8px' }}
+                   onClick={() => jumpToNote(note)}
                         ref={(ref): void => {
                             noteEles.set(note.id, ref as HTMLElement);
                         }}
+                >
+                    <blockquote
+                        style={{
+                            borderLeft: '2px solid rgba(0, 0, 0, 0.2)',
+                            fontSize: '.75rem',
+                            lineHeight: 1.5,
+                            margin: '0 0 8px 0',
+                            paddingLeft: '8px',
+                            textAlign: 'justify',
+                        }}
                     >
-                        <blockquote
-                            style={{
-                                borderLeft: '2px solid rgba(0, 0, 0, 0.2)',
-                                fontSize: '.75rem',
-                                lineHeight: 1.5,
-                                margin: '0 0 8px 0',
-                                paddingLeft: '8px',
-                                textAlign: 'justify',
-                            }}
-                        >
-                            {note.quote}
-                        </blockquote>
-                        {note.content}
-                    </div>
-                );
-            })}
+                        {note.quote}
+                    </blockquote>
+                    <div>{note.content}</div>
+                </div>
+            ))}
         </div>
     );
 
     const defaultLayoutPluginInstance = defaultLayoutPlugin({
-        sidebarTabs: (defaultTabs) =>
-            defaultTabs.concat({
+        sidebarTabs: (defaultTabs) => [
+            ...defaultTabs,
+            {
                 content: sidebarNotes,
                 icon: <MessageIcon />,
                 title: 'Notes',
-            }),
+            },
+        ],
     });
+
     const { activateTab } = defaultLayoutPluginInstance;
 
     return (
-        <div
-            style={{
-                height: '100%',
-            }}
-        >
+        <div style={{ height: '100%' }}>
             <Viewer
                 fileUrl={fileUrl}
                 plugins={[highlightPluginInstance, defaultLayoutPluginInstance]}
